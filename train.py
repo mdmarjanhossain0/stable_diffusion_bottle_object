@@ -69,6 +69,9 @@ import data.aspects as aspects
 import data.resolver as resolver
 from utils.sample_generator import SampleGenerator
 
+
+from utils.measurement_embedder import MeasurementEmbedder
+
 _SIGTERM_EXIT_CODE = 130
 _VERY_LARGE_NUMBER = 1e9
 
@@ -707,6 +710,13 @@ def main(args):
         text_encoder = text_encoder.to(device, dtype=torch.float32)
 
 
+
+
+    measurement_embedder = MeasurementEmbedder(
+        input_dim=3,
+        hidden_dim=text_encoder.config.hidden_size
+    ).to(device)
+
     if use_ema_dacay_training:
         if not ema_model_loaded_from_file:
             logging.info(f"EMA decay enabled, creating EMA model.")
@@ -931,6 +941,8 @@ def main(args):
 
     # actual prediction function - shared between train and validate
     def get_model_prediction_and_target(image, tokens, zero_frequency_noise_ratio=0.0, return_loss=False, loss_scale=None, embedding_perturbation=0.0):
+        # print("get_model_prediction_and_target Tokens: --------------------")
+        # print(tokens)
         with torch.no_grad():
             with autocast(enabled=args.amp):
                 pixel_values = image.to(memory_format=torch.contiguous_format).to(unet.device)
@@ -958,6 +970,8 @@ def main(args):
             timesteps = timesteps.long()
 
             cuda_caption = tokens.to(text_encoder.device)
+            # print("get_model_prediction_and_target cuda_caption: --------------------")
+            # print(cuda_caption)
 
         encoder_hidden_states = text_encoder(cuda_caption, output_hidden_states=True)
 
@@ -971,6 +985,15 @@ def main(args):
         perturbation_deviation = embedding_perturbation / math.sqrt(encoder_hidden_states.shape[2])
         perturbation_delta =  torch.randn_like(encoder_hidden_states) * (perturbation_deviation)
         encoder_hidden_states = encoder_hidden_states + perturbation_delta
+        
+        # ---------------- Measurement Guidance ----------------
+        print("Measurements: ", batch["measurements"])
+        if "measurements" in batch:
+            measurement_values = batch["measurements"].to(encoder_hidden_states.device).float()  # [B, n]
+            meas_embeddings = measurement_embedder(measurement_values)  # [B, 1, hidden_dim]
+            # Concatenate as extra token
+            encoder_hidden_states = torch.cat([encoder_hidden_states, meas_embeddings], dim=1)
+        # -------------------------------------------------------
 
         noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
 

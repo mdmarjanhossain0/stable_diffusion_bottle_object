@@ -1,15 +1,49 @@
 python scripts/txt2img.py ^
   --diffusers_path "logs\myproj-20250910-194035\ckpts\last-myproj-ep100-gs03600" ^
-  --prompt "A bottle of 5 cm height of whisky" ^
+  --prompt "A F-Style plastic transparent bottle of 10 cm height" ^
   --height 512 ^
   --width 512 ^
   --steps 50 ^
   --cfg_scale 7.5 ^
-  --batch_size 1 ^
+  --batch_size 2 ^
   --batch_count 1
   
    ^
   --seed 42 ^
+
+
+python scripts/txt2img.py ^
+  --diffusers_path "logs\myproj-20250914-055449\ckpts\last-myproj-ep100-gs01800" ^
+  --prompt "A Cylindrical Round metalic bottle of 10 cm height" ^
+  --height 512 ^
+  --width 512 ^
+  --steps 50 ^
+  --cfg_scale 7.5 ^
+  --batch_size 2 ^
+  --batch_count 1
+
+Just number
+python scripts/txt2img.py ^
+  --diffusers_path "logs\myproj-20250914-072422\ckpts\last-myproj-ep20-gs00360" ^
+  --prompt "A Cylindrical Round metalic bottle of 10 cm height" ^
+  --height 512 ^
+  --width 512 ^
+  --steps 50 ^
+  --cfg_scale 7.5 ^
+  --batch_size 2 ^
+  --batch_count 1
+
+
+Unet guided
+python scripts/txt2img.py ^
+  --diffusers_path "logs\myproj-20250915-012109\ckpts\last-myproj-ep100-gs03600" ^
+  --prompt "A bottle of 12 cm height" ^
+  --height 512 ^
+  --width 512 ^
+  --steps 100 ^
+  --cfg_scale 7.5 ^
+  --batch_size 1 ^
+  --batch_count 1
 
 
 python scripts/txt2img.py --diffusers_path "logs\project_abc-20250506-201629\ckpts\errored-project_abc-ep20-gs00260" --prompt "A bottle of 7 cm radius"
@@ -31,7 +65,7 @@ python train.py --resume_ckpt "panopstor/EveryDream" ^
 --lr_decay_steps 1500 ^
 --lr_warmup_steps 20 ^
 --project_name myproj ^
---batch_size 2 ^
+--batch_size 4 ^
 --sample_steps 100 ^
 --lr 1.5e-6 ^
 --save_every_n_epochs 100

@@ -1,6 +1,6 @@
 {
   "attn_type": "sdp",
-  "batch_size": 2,
+  "batch_size": 4,
   "ckpt_every_n_minutes": null,
   "clip_grad_norm": null,
   "clip_skip": 0,

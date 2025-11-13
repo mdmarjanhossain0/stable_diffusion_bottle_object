@@ -27,6 +27,25 @@ import torch.nn.functional as F
 
 from plugins.plugins import PluginRunner
 
+
+import re
+import torch
+import torch.nn as nn
+import random
+
+# Define measurement embedding module (example)
+# Suppose text embeddings are 768-dim
+measurement_embedding_module = nn.Linear(5, 768)  # max 5 numbers in caption
+
+def extract_numbers_from_caption(caption: str):
+    """Extract numbers from caption as floats."""
+    numbers = re.findall(r"[-+]?\d*\.\d+|\d+", caption)
+    return [float(num) for num in numbers] if numbers else [0.0]
+
+def normalize_numbers(numbers, max_value=100.0):
+    """Normalize numbers to 0-1 range."""
+    return [n / max_value for n in numbers]
+
 class EveryDreamBatch(Dataset):
     """
     data_loader: `DataLoaderMultiAspect` object
@@ -106,7 +125,9 @@ class EveryDreamBatch(Dataset):
 
         example["image"] = self.plugin_runner.run_transform_pil_image(train_item["image"])
         example["image"] = image_transforms(example["image"])        
+        # print(f"EveryDreamBatch: ------------------------------- example['caption']: {example['caption']}")
         example["caption"] = self.plugin_runner.run_transform_caption(example["caption"])
+        # print(f"EveryDreamBatch: ------------------------------- example['caption']: {example['caption']}")
 
         if random.random() > (train_item.get("cond_dropout", self.conditional_dropout)):
             example["tokens"] = self.tokenizer(example["caption"],
@@ -122,6 +143,24 @@ class EveryDreamBatch(Dataset):
                                               ).input_ids
 
         example["tokens"] = torch.tensor(example["tokens"])
+
+        numbers = [float(num) for num in re.findall(r'\d+\.?\d*', example["caption"])]
+
+        # --- FIX: enforce fixed length ---
+        max_numbers = 3  # must match measurement_embedder input_dim
+        if len(numbers) == 0:
+            numbers = [0.0] * max_numbers
+        else:
+            numbers = numbers[:max_numbers]  # truncate if too many
+            while len(numbers) < max_numbers:  # pad if too few
+                numbers.append(0.0)
+
+        # normalize (example: assume 512 is max dimension)
+        numbers = [n / 512.0 for n in numbers]
+
+        example["measurements"] = torch.tensor(numbers, dtype=torch.float)
+
+   
 
         example["runt_size"] = train_item["runt_size"]
         example["loss_scale"] = train_item["loss_scale"]
@@ -224,12 +263,19 @@ def collate_fn(batch):
 
     loss_scale = torch.tensor([example.get("loss_scale", 1) for example in batch])
 
+
+    measurements = [example["measurements"] for example in batch]
+    measurements = torch.nn.utils.rnn.pad_sequence(
+        measurements, batch_first=True
+    ) 
+
     ret = {
         "tokens": torch.stack(tuple(tokens)),
         "image": images,
         "captions": captions,
         "runt_size": runt_size,
-        "loss_scale": loss_scale
+        "loss_scale": loss_scale,
+        "measurements": measurements
     }
     del batch
     return ret

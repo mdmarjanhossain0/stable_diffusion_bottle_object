@@ -1,20 +1,27 @@
 import os
-import re
+from pathlib import Path
 
-# Folder path
-folder_path = "./training_samples_1"
+folder = "./training_samples"
 
-# Regex to find numbers followed by 'cm'
-pattern = re.compile(r'(\d+\s*cm)')
+for filename in os.listdir(folder):
+    if filename.lower().endswith((".jpg", ".jpeg", ".png", ".bmp", ".gif")):
+        if "[" in filename or "]" in filename:
+            old_path = os.path.join(folder, filename)
+            new_filename = filename.replace("[", "").replace("]", "")
+            new_path = os.path.join(folder, new_filename)
 
-for filename in os.listdir(folder_path):
-    old_path = os.path.join(folder_path, filename)
+            # If file exists, add a suffix like _1, _2, etc.
+            if os.path.exists(new_path):
+                stem = Path(new_filename).stem
+                ext = Path(new_filename).suffix
+                counter = 1
+                while True:
+                    candidate = f"{stem}_{counter}{ext}"
+                    candidate_path = os.path.join(folder, candidate)
+                    if not os.path.exists(candidate_path):
+                        new_path = candidate_path
+                        break
+                    counter += 1
 
-    if os.path.isfile(old_path):
-        # Replace matches with square brackets
-        new_filename = pattern.sub(r'[\1]', filename)
-
-        if new_filename != filename:
-            new_path = os.path.join(folder_path, new_filename)
             os.rename(old_path, new_path)
-            print(f'Renamed: {filename} -> {new_filename}')
+            print(f"Renamed: {filename} → {os.path.basename(new_path)}")
